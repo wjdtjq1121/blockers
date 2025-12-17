@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>블로커스 - Blokus Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .game-header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .player-info {
+            padding: 15px 25px;
+            border-radius: 10px;
+            min-width: 150px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .player-info.active {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .player-info.blue { background: #2196F3; color: white; }
+        .player-info.yellow { background: #FFC107; color: #333; }
+        .player-info.red { background: #F44336; color: white; }
+        .player-info.green { background: #4CAF50; color: white; }
+
+        .player-info .name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .player-info .pieces-left {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .game-main {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .board-container {
+            flex-shrink: 0;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(20, 25px);
+            grid-template-rows: repeat(20, 25px);
+            gap: 1px;
+            background: #333;
+            border: 3px solid #333;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .cell {
+            background: white;
+            width: 25px;
+            height: 25px;
+            position: relative;
+        }
+
+        .cell.corner {
+            background: #f0f0f0;
+        }
+
+        .cell.start-corner {
+            background: #2196F3 !important;
+            opacity: 0.5;
+            position: relative;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .cell.start-corner::after {
+            content: '★';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 3px rgba(0,0,0,0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+
+        .cell.filled {
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .cell.filled.blue { background: #2196F3; }
+        .cell.filled.yellow { background: #FFC107; }
+        .cell.filled.red { background: #F44336; }
+        .cell.filled.green { background: #4CAF50; }
+
+        .cell.preview {
+            opacity: 0.7;
+            border: 2px solid rgba(0, 255, 0, 0.8);
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+        }
+
+        .cell.invalid-preview {
+            background: rgba(255, 0, 0, 0.5) !important;
+            border: 2px solid rgba(255, 0, 0, 0.8) !important;
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+        }
+
+        .pieces-container {
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .pieces-container h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .pieces-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .piece {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            padding: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .piece:hover:not(.used) {
+            transform: scale(1.05);
+            border-color: #666;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        .piece.selected {
+            border-color: #333;
+            border-width: 3px;
+            background: #f0f0f0;
+        }
+
+        .piece.used {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .piece-shape {
+            display: grid;
+            gap: 1px;
+        }
+
+        .piece-cell {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .piece-cell.filled.blue { background: #2196F3; }
+        .piece-cell.filled.yellow { background: #FFC107; }
+        .piece-cell.filled.red { background: #F44336; }
+        .piece-cell.filled.green { background: #4CAF50; }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #666;
+            color: white;
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .game-over.show {
+            display: flex;
+        }
+
+        .game-over-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .game-over-content h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .final-scores {
+            margin: 20px 0;
+        }
+
+        .score-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 1.2em;
+        }
+
+        .message {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f0f0f0;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .debug-info {
+            margin: 10px 0;
+            padding: 10px;
+            background: #333;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 0.9em;
+            border-radius: 5px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .cell {
+            cursor: pointer;
+        }
+
+        .cell:hover {
+            outline: 2px solid #ff0;
+        }
+
+        /* 모바일 최적화 */
+        @media screen and (max-width: 768px) {
+            .desktop-only {
+                display: none !important;
+            }
+
+            body {
+                padding: 10px;
+                align-items: flex-start;
+            }
+
+            .game-container {
+                padding: 15px;
+                border-radius: 10px;
+            }
+
+            .game-header h1 {
+                font-size: 1.8em;
+                margin-bottom: 5px;
+            }
+
+            .game-info {
+                gap: 5px;
+                margin-bottom: 10px;
+            }
+
+            .player-info {
+                padding: 8px 12px;
+                min-width: 80px;
+                font-size: 0.85em;
+            }
+
+            .player-info .name {
+                font-size: 0.95em;
+                margin-bottom: 2px;
+            }
+
+            .player-info .pieces-left {
+                font-size: 0.75em;
+            }
+
+            .message {
+                margin: 10px 0;
+                padding: 8px;
+                font-size: 0.9em;
+            }
+
+            .debug-info {
+                display: none; /* 모바일에서는 디버그 정보 숨김 */
+            }
+
+            .game-main {
+                flex-direction: column;
+                gap: 15px;
+                align-items: center;
+            }
+
+            .board {
+                grid-template-columns: repeat(20, 18px);
+                grid-template-rows: repeat(20, 18px);
+                gap: 0.5px;
+                border: 2px solid #333;
+            }
+
+            .cell {
+                width: 18px;
+                height: 18px;
+            }
+
+            .cell.start-corner::after {
+                font-size: 14px;
+            }
+
+            .pieces-container {
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .pieces-container h2 {
+                font-size: 1.2em;
+                margin-bottom: 10px;
+            }
+
+            .pieces-grid {
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+                gap: 8px;
+                max-height: 400px;
+                padding: 8px;
+            }
+
+            .piece {
+                padding: 4px;
+            }
+
+            .piece-cell {
+                width: 10px;
+                height: 10px;
+            }
+
+            .controls {
+                margin-top: 10px;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .btn {
+                padding: 12px 16px;
+                font-size: 0.95em;
+                flex: 1;
+                min-width: 100px;
+            }
+
+            .game-over-content {
+                padding: 25px;
+                margin: 10px;
+                max-width: 90%;
+            }
+
+            .game-over-content h2 {
+                font-size: 1.8em;
+            }
+
+            .score-item {
+                font-size: 1em;
+                padding: 8px;
+            }
+
+            /* 터치 영역 확대 */
+            .cell {
+                cursor: pointer;
+                -webkit-tap-highlight-color: rgba(255, 255, 0, 0.3);
+            }
+
+            .piece {
+                -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+            }
+
+            .btn {
+                -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+            }
+        }
+
+        /* 매우 작은 화면 (360px 이하) */
+        @media screen and (max-width: 400px) {
+            .game-header h1 {
+                font-size: 1.5em;
+            }
+
+            .board {
+                grid-template-columns: repeat(20, 15px);
+                grid-template-rows: repeat(20, 15px);
+            }
+
+            .cell {
+                width: 15px;
+                height: 15px;
+            }
+
+            .cell.start-corner::after {
+                font-size: 11px;
+            }
+
+            .pieces-grid {
+                grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+                gap: 6px;
+            }
+
+            .piece-cell {
+                width: 8px;
+                height: 8px;
+            }
+
+            .btn {
+                padding: 10px 12px;
+                font-size: 0.85em;
+                min-width: 80px;
+            }
+
+            .player-info {
+                padding: 6px 10px;
+                min-width: 70px;
+                font-size: 0.8em;
+            }
+        }
+
+        /* 가로 모드 모바일 */
+        @media screen and (max-width: 900px) and (orientation: landscape) {
+            .game-main {
+                flex-direction: row;
+            }
+
+            .board {
+                grid-template-columns: repeat(20, 16px);
+                grid-template-rows: repeat(20, 16px);
+            }
+
+            .cell {
+                width: 16px;
+                height: 16px;
+            }
+
+            .pieces-container {
+                max-width: 300px;
+            }
+
+            .pieces-grid {
+                max-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>🎮 블로커스 (Blokus)</h1>
+        </div>
+
+        <div class="game-info" id="playersInfo">
+            <!-- Players info will be inserted here -->
+        </div>
+
+        <div class="message" id="messageBox">게임 시작! 파랑 플레이어의 차례입니다.</div>
+        <div class="debug-info" id="debugInfo">디버그: 대기 중...</div>
+
+        <div class="game-main">
+            <div class="board-container">
+                <div class="board" id="gameBoard">
+                    <!-- Board cells will be inserted here -->
+                </div>
+            </div>
+
+            <div class="pieces-container" id="piecesContainer">
+                <h2>내 조각들</h2>
+                <div class="controls">
+                    <button class="btn btn-primary" onclick="rotatePiece()">🔄 회전</button>
+                    <button class="btn btn-secondary" onclick="flipPiece()">↔️ 뒤집기</button>
+                    <button class="btn btn-secondary" onclick="deselectPiece()">❌ 선택 취소</button>
+                </div>
+                <div class="pieces-grid" id="piecesGrid">
+                    <!-- Pieces will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="controls" style="margin-top: 20px;">
+            <button class="btn btn-success" onclick="skipTurn()">⏭️ 턴 넘기기</button>
+            <button class="btn btn-secondary" onclick="resetGame()">🔄 새 게임</button>
+            <button class="btn btn-primary desktop-only" onclick="testClick()">🧪 상태 확인</button>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <div class="game-over-content">
+            <h2>🎉 게임 종료!</h2>
+            <div class="final-scores" id="finalScores">
+                <!-- Final scores will be inserted here -->
+            </div>
+            <button class="btn btn-success" onclick="resetGame()">새 게임 시작</button>
+        </div>
+    </div>
+
+    <script>
+        // 블로커스 조각 정의 (21개의 폴리오미노)
+        const PIECE_SHAPES = [
+            [[1]], // 1칸
+            [[1,1]], // 2칸
+            [[1,1,1]], // 3칸 - 직선
+            [[1,1],[1,0]], // 3칸 - L
+            [[1,1,1,1]], // 4칸 - 직선
+            [[1,1,1],[1,0,0]], // 4칸 - L
+            [[1,1,1],[0,1,0]], // 4칸 - T
+            [[1,1,0],[0,1,1]], // 4칸 - Z
+            [[1,1],[1,1]], // 4칸 - 정사각형
+            [[1,1,1,1,1]], // 5칸 - 직선
+            [[1,1,1,1],[1,0,0,0]], // 5칸 - L
+            [[1,1,1,1],[0,0,0,1]], // 5칸 - L 대칭
+            [[1,1,1],[1,1,0]], // 5칸 - P
+            [[1,1,1],[0,1,1]], // 5칸 - P 대칭
+            [[1,1,1],[0,1,0],[0,1,0]], // 5칸 - T
+            [[1,1,0],[0,1,0],[0,1,1]], // 5칸 - Z
+            [[0,1,0],[1,1,1],[0,1,0]], // 5칸 - +
+            [[1,1,1],[1,0,1]], // 5칸 - U
+            [[1,1,0],[0,1,1],[0,0,1]], // 5칸 - W
+            [[0,1,1],[1,1,0],[1,0,0]], // 5칸 - N
+            [[1,0,0],[1,1,1],[0,0,1]], // 5칸 - Y
+        ];
+
+        // 게임 상태
+        const game = {
+            board: Array(20).fill(null).map(() => Array(20).fill(null)),
+            players: [
+                { name: '플레이어', color: 'blue', pieces: [], isAI: false, canPlay: true, cornerX: 0, cornerY: 0 },
+                { name: 'AI 1', color: 'yellow', pieces: [], isAI: true, canPlay: true, cornerX: 19, cornerY: 0 },
+                { name: 'AI 2', color: 'red', pieces: [], isAI: true, canPlay: true, cornerX: 19, cornerY: 19 },
+                { name: 'AI 3', color: 'green', pieces: [], isAI: true, canPlay: true, cornerX: 0, cornerY: 19 }
+            ],
+            currentPlayerIndex: 0,
+            selectedPieceIndex: null,
+            gameStarted: false,
+            passCount: 0
+        };
+
+        // 조각 초기화
+        function initializePieces() {
+            game.players.forEach(player => {
+                player.pieces = PIECE_SHAPES.map(shape => ({
+                    shape: shape,
+                    used: false,
+                    rotation: 0,
+                    flipped: false
+                }));
+            });
+        }
+
+        // 조각 회전
+        function rotateShape(shape) {
+            const rows = shape.length;
+            const cols = shape[0].length;
+            const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    rotated[c][rows - 1 - r] = shape[r][c];
+                }
+            }
+            return rotated;
+        }
+
+        // 조각 뒤집기
+        function flipShape(shape) {
+            return shape.map(row => [...row].reverse());
+        }
+
+        // 조각의 현재 형태 가져오기
+        function getCurrentShape(piece) {
+            let shape = piece.shape;
+
+            // 뒤집기
+            if (piece.flipped) {
+                shape = flipShape(shape);
+            }
+
+            // 회전
+            for (let i = 0; i < piece.rotation; i++) {
+                shape = rotateShape(shape);
+            }
+
+            return shape;
+        }
+
+        // 보드 렌더링
+        function renderBoard() {
+            const boardElement = document.getElementById('gameBoard');
+
+            // 첫 렌더링인지 확인
+            const isFirstRender = boardElement.children.length === 0;
+
+            if (isFirstRender) {
+                boardElement.innerHTML = '';
+
+                // 이벤트 위임: 보드 전체에 한 번만 이벤트 리스너 추가
+                boardElement.addEventListener('click', (e) => {
+                    const cell = e.target.closest('.cell');
+                    if (cell) {
+                        const row = parseInt(cell.dataset.row);
+                        const col = parseInt(cell.dataset.col);
+                        handleCellClick(row, col);
+                    }
+                });
+
+                boardElement.addEventListener('mouseover', (e) => {
+                    const cell = e.target.closest('.cell');
+                    if (cell) {
+                        const row = parseInt(cell.dataset.row);
+                        const col = parseInt(cell.dataset.col);
+                        showPreview(row, col);
+                    }
+                });
+            }
+
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            const isFirstPiece = currentPlayer && currentPlayer.pieces.every(p => !p.used);
+
+            // 셀 업데이트 (재생성하지 않고 클래스만 업데이트)
+            if (!isFirstRender) {
+                for (let r = 0; r < 20; r++) {
+                    for (let c = 0; c < 20; c++) {
+                        const cell = boardElement.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+                        if (!cell) continue;
+
+                        // 기존 클래스 초기화
+                        cell.className = 'cell';
+
+                        // 모서리 표시
+                        if ((r === 0 && c === 0) || (r === 0 && c === 19) ||
+                            (r === 19 && c === 0) || (r === 19 && c === 19)) {
+                            cell.classList.add('corner');
+                        }
+
+                        // 현재 플레이어의 시작 모서리 강조
+                        if (isFirstPiece && !currentPlayer.isAI &&
+                            r === currentPlayer.cornerY && c === currentPlayer.cornerX) {
+                            cell.classList.add('start-corner');
+                        }
+
+                        // 보드 상태 반영
+                        if (game.board[r][c]) {
+                            cell.classList.add('filled', game.board[r][c]);
+                        }
+                    }
+                }
+            } else {
+                // 첫 렌더링: 셀 생성
+                let cellCount = 0;
+                for (let r = 0; r < 20; r++) {
+                    for (let c = 0; c < 20; c++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = r;
+                        cell.dataset.col = c;
+
+                        // 모서리 표시
+                        if ((r === 0 && c === 0) || (r === 0 && c === 19) ||
+                            (r === 19 && c === 0) || (r === 19 && c === 19)) {
+                            cell.classList.add('corner');
+                        }
+
+                        // 현재 플레이어의 시작 모서리 강조
+                        if (isFirstPiece && !currentPlayer.isAI &&
+                            r === currentPlayer.cornerY && c === currentPlayer.cornerX) {
+                            cell.classList.add('start-corner');
+                        }
+
+                        if (game.board[r][c]) {
+                            cell.classList.add('filled', game.board[r][c]);
+                        }
+
+                        boardElement.appendChild(cell);
+                        cellCount++;
+                    }
+                }
+                console.log(`보드 렌더링 완료: ${cellCount}개 셀 생성`);
+            }
+        }
+
+        // 플레이어 정보 렌더링
+        function renderPlayersInfo() {
+            const playersInfo = document.getElementById('playersInfo');
+            playersInfo.innerHTML = '';
+
+            game.players.forEach((player, index) => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = `player-info ${player.color}`;
+                if (index === game.currentPlayerIndex) {
+                    playerDiv.classList.add('active');
+                }
+
+                const usedPieces = player.pieces.filter(p => p.used).length;
+                const totalSquares = player.pieces.reduce((sum, piece) => {
+                    if (!piece.used) {
+                        return sum + piece.shape.flat().filter(cell => cell === 1).length;
+                    }
+                    return sum;
+                }, 0);
+
+                playerDiv.innerHTML = `
+                    <div class="name">${player.name}</div>
+                    <div class="pieces-left">조각: ${21 - usedPieces}/21</div>
+                    <div class="pieces-left">남은 칸: ${totalSquares}</div>
+                `;
+
+                playersInfo.appendChild(playerDiv);
+            });
+        }
+
+        // 조각 렌더링 (플레이어용)
+        function renderPieces() {
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            if (currentPlayer.isAI) return;
+
+            const piecesGrid = document.getElementById('piecesGrid');
+            piecesGrid.innerHTML = '';
+
+            currentPlayer.pieces.forEach((piece, index) => {
+                const pieceDiv = document.createElement('div');
+                pieceDiv.className = 'piece';
+                if (piece.used) {
+                    pieceDiv.classList.add('used');
+                }
+                if (game.selectedPieceIndex === index) {
+                    pieceDiv.classList.add('selected');
+                }
+
+                const shape = getCurrentShape(piece);
+                const shapeDiv = document.createElement('div');
+                shapeDiv.className = 'piece-shape';
+                shapeDiv.style.gridTemplateColumns = `repeat(${shape[0].length}, 12px)`;
+                shapeDiv.style.gridTemplateRows = `repeat(${shape.length}, 12px)`;
+
+                shape.forEach(row => {
+                    row.forEach(cell => {
+                        const cellDiv = document.createElement('div');
+                        cellDiv.className = 'piece-cell';
+                        if (cell === 1) {
+                            cellDiv.classList.add('filled', currentPlayer.color);
+                        }
+                        shapeDiv.appendChild(cellDiv);
+                    });
+                });
+
+                pieceDiv.appendChild(shapeDiv);
+                if (!piece.used) {
+                    pieceDiv.addEventListener('click', () => selectPiece(index));
+                }
+
+                piecesGrid.appendChild(pieceDiv);
+            });
+        }
+
+        // 조각 선택
+        function selectPiece(index) {
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            if (currentPlayer.pieces[index].used) {
+                showDebug(`조각 ${index}는 이미 사용됨`);
+                return;
+            }
+
+            game.selectedPieceIndex = index;
+            showDebug(`✅ 조각 ${index} 선택됨! selectedPieceIndex = ${game.selectedPieceIndex}`);
+
+            renderPieces();
+            renderBoard();
+
+            const isFirstPiece = currentPlayer.pieces.every(p => !p.used);
+            if (isFirstPiece) {
+                showMessage('✅ 조각 선택됨! 왼쪽 상단 모서리(★)를 덮도록 보드에 클릭하세요!');
+            } else {
+                showMessage('✅ 조각 선택됨! 같은 색의 꼭지점에 닿도록 배치하세요!');
+            }
+        }
+
+        // 조각 선택 취소
+        function deselectPiece() {
+            game.selectedPieceIndex = null;
+
+            // 미리보기 제거
+            lastPreviewCells.forEach(cell => {
+                cell.classList.remove('preview', 'invalid-preview');
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+
+                if (!game.board[r][c]) {
+                    const currentPlayer = game.players[game.currentPlayerIndex];
+                    const isFirstPiece = currentPlayer && currentPlayer.pieces.every(p => !p.used);
+
+                    cell.className = 'cell';
+
+                    if ((r === 0 && c === 0) || (r === 0 && c === 19) ||
+                        (r === 19 && c === 0) || (r === 19 && c === 19)) {
+                        cell.classList.add('corner');
+                    }
+
+                    if (isFirstPiece && !currentPlayer.isAI &&
+                        r === currentPlayer.cornerY && c === currentPlayer.cornerX) {
+                        cell.classList.add('start-corner');
+                    }
+                }
+            });
+            lastPreviewCells = [];
+
+            renderPieces();
+            renderBoard();
+            showDebug('조각 선택 취소됨');
+            showMessage('조각 선택이 취소되었습니다.');
+        }
+
+        // 조각 회전
+        function rotatePiece() {
+            if (game.selectedPieceIndex === null) return;
+
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            const piece = currentPlayer.pieces[game.selectedPieceIndex];
+            piece.rotation = (piece.rotation + 1) % 4;
+            renderPieces();
+
+            // 미리보기 초기화
+            lastPreviewCells.forEach(cell => {
+                cell.classList.remove('preview', 'invalid-preview', 'filled', 'blue', 'yellow', 'red', 'green');
+            });
+            lastPreviewCells = [];
+
+            showDebug('조각 회전됨');
+        }
+
+        // 조각 뒤집기
+        function flipPiece() {
+            if (game.selectedPieceIndex === null) return;
+
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            const piece = currentPlayer.pieces[game.selectedPieceIndex];
+            piece.flipped = !piece.flipped;
+            renderPieces();
+
+            // 미리보기 초기화
+            lastPreviewCells.forEach(cell => {
+                cell.classList.remove('preview', 'invalid-preview', 'filled', 'blue', 'yellow', 'red', 'green');
+            });
+            lastPreviewCells = [];
+
+            showDebug('조각 뒤집기됨');
+        }
+
+        // 배치 유효성 검사
+        function isValidPlacement(playerIndex, shape, row, col) {
+            const player = game.players[playerIndex];
+            const color = player.color;
+
+            // 보드 범위 확인
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c] === 1) {
+                        const boardR = row + r;
+                        const boardC = col + c;
+
+                        if (boardR < 0 || boardR >= 20 || boardC < 0 || boardC >= 20) {
+                            console.log(`범위 벗어남: (${boardR}, ${boardC})`);
+                            return false;
+                        }
+
+                        if (game.board[boardR][boardC] !== null) {
+                            console.log(`이미 차있음: (${boardR}, ${boardC}) = ${game.board[boardR][boardC]}`);
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            // 첫 번째 조각인지 확인
+            const isFirstPiece = player.pieces.every(p => !p.used);
+
+            if (isFirstPiece) {
+                // 첫 조각은 모서리를 덮어야 함
+                let coversCorner = false;
+                for (let r = 0; r < shape.length; r++) {
+                    for (let c = 0; c < shape[0].length; c++) {
+                        if (shape[r][c] === 1) {
+                            const boardR = row + r;
+                            const boardC = col + c;
+                            if (boardR === player.cornerY && boardC === player.cornerX) {
+                                coversCorner = true;
+                            }
+                        }
+                    }
+                }
+                console.log(`첫 조각 모서리 체크: ${coversCorner}, 목표: (${player.cornerY}, ${player.cornerX})`);
+                return coversCorner;
+            }
+
+            // 같은 색 조각과 변으로 접촉하는지 확인 (불가능)
+            let touchesSameColorEdge = false;
+            // 같은 색 조각과 모서리로 접촉하는지 확인 (필수)
+            let touchesSameColorCorner = false;
+
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c] === 1) {
+                        const boardR = row + r;
+                        const boardC = col + c;
+
+                        // 변 체크 (상하좌우)
+                        const edges = [
+                            [boardR - 1, boardC],
+                            [boardR + 1, boardC],
+                            [boardR, boardC - 1],
+                            [boardR, boardC + 1]
+                        ];
+
+                        for (const [er, ec] of edges) {
+                            if (er >= 0 && er < 20 && ec >= 0 && ec < 20) {
+                                if (game.board[er][ec] === color) {
+                                    touchesSameColorEdge = true;
+                                }
+                            }
+                        }
+
+                        // 모서리 체크 (대각선)
+                        const corners = [
+                            [boardR - 1, boardC - 1],
+                            [boardR - 1, boardC + 1],
+                            [boardR + 1, boardC - 1],
+                            [boardR + 1, boardC + 1]
+                        ];
+
+                        for (const [cr, cc] of corners) {
+                            if (cr >= 0 && cr < 20 && cc >= 0 && cc < 20) {
+                                if (game.board[cr][cc] === color) {
+                                    touchesSameColorCorner = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (touchesSameColorEdge) {
+                return false;
+            }
+
+            if (!touchesSameColorCorner) {
+                return false;
+            }
+
+            return true;
+        }
+
+        // 조각 배치
+        function placePiece(playerIndex, pieceIndex, row, col) {
+            const player = game.players[playerIndex];
+            const piece = player.pieces[pieceIndex];
+            const shape = getCurrentShape(piece);
+
+            if (!isValidPlacement(playerIndex, shape, row, col)) {
+                return false;
+            }
+
+            // 보드에 배치
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c] === 1) {
+                        game.board[row + r][col + c] = player.color;
+                    }
+                }
+            }
+
+            piece.used = true;
+            return true;
+        }
+
+        // 미리보기 상태 저장
+        let lastPreviewCells = [];
+
+        // 미리보기
+        function showPreview(row, col) {
+            // 이전 미리보기 완전히 제거
+            lastPreviewCells.forEach(cell => {
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+
+                // 실제로 배치된 조각이 아닌 경우에만 제거
+                if (!game.board[r][c]) {
+                    const currentPlayer = game.players[game.currentPlayerIndex];
+                    const isFirstPiece = currentPlayer && currentPlayer.pieces.every(p => !p.used);
+
+                    // 모든 클래스 제거하고 다시 설정
+                    cell.className = 'cell';
+
+                    if ((r === 0 && c === 0) || (r === 0 && c === 19) ||
+                        (r === 19 && c === 0) || (r === 19 && c === 19)) {
+                        cell.classList.add('corner');
+                    }
+
+                    if (isFirstPiece && !currentPlayer.isAI &&
+                        r === currentPlayer.cornerY && c === currentPlayer.cornerX) {
+                        cell.classList.add('start-corner');
+                    }
+                }
+            });
+            lastPreviewCells = [];
+
+            if (game.selectedPieceIndex === null) return;
+
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            if (currentPlayer.isAI) return;
+
+            const piece = currentPlayer.pieces[game.selectedPieceIndex];
+            const shape = getCurrentShape(piece);
+
+            const valid = isValidPlacement(game.currentPlayerIndex, shape, row, col);
+
+            // 새 미리보기 추가
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c] === 1) {
+                        const boardR = row + r;
+                        const boardC = col + c;
+
+                        if (boardR >= 0 && boardR < 20 && boardC >= 0 && boardC < 20) {
+                            const cell = document.querySelector(`[data-row="${boardR}"][data-col="${boardC}"]`);
+                            if (cell && !game.board[boardR][boardC]) {
+                                cell.classList.add('filled', currentPlayer.color, 'preview');
+                                if (!valid) {
+                                    cell.classList.add('invalid-preview');
+                                }
+                                lastPreviewCells.push(cell);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 셀 클릭 처리
+        function handleCellClick(row, col) {
+            showDebug(`🖱️ 보드 클릭: (${row}, ${col}), selectedPieceIndex = ${game.selectedPieceIndex}`);
+
+            if (game.selectedPieceIndex === null) {
+                showMessage('⚠️ 먼저 오른쪽에서 조각을 선택해주세요!');
+                showDebug('❌ 조각이 선택되지 않음');
+                return;
+            }
+
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            if (currentPlayer.isAI) {
+                showDebug('❌ AI 플레이어의 턴');
+                return;
+            }
+
+            const piece = currentPlayer.pieces[game.selectedPieceIndex];
+            const shape = getCurrentShape(piece);
+            const isFirstPiece = currentPlayer.pieces.every(p => !p.used);
+
+            showDebug(`조각 정보: 인덱스=${game.selectedPieceIndex}, 첫조각=${isFirstPiece}, 크기=${shape.length}x${shape[0].length}`);
+
+            if (placePiece(game.currentPlayerIndex, game.selectedPieceIndex, row, col)) {
+                showDebug('✅ 배치 성공!');
+                showMessage('✅ 조각 배치 성공!');
+                game.selectedPieceIndex = null;
+                game.passCount = 0;
+                nextTurn();
+            } else {
+                showDebug('❌ 배치 실패');
+                if (isFirstPiece) {
+                    showMessage(`❌ 첫 조각은 왼쪽 상단 모서리(★)를 덮어야 합니다!`);
+                } else {
+                    showMessage('❌ 조각은 같은 색 조각과 꼭지점으로만 닿아야 하고, 변으로는 닿으면 안됩니다!');
+                }
+            }
+        }
+
+        // 메시지 표시
+        function showMessage(message) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+        }
+
+        // 디버그 정보 표시
+        function showDebug(message) {
+            const debugBox = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            debugBox.textContent = `[${timestamp}] ${message}`;
+            console.log(`[디버그] ${message}`);
+        }
+
+        // 다음 턴
+        function nextTurn() {
+            game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 4;
+
+            // 미리보기 초기화
+            lastPreviewCells.forEach(cell => {
+                cell.classList.remove('preview', 'invalid-preview');
+            });
+            lastPreviewCells = [];
+
+            renderBoard();
+            renderPlayersInfo();
+            renderPieces();
+
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            showMessage(`${currentPlayer.name}의 차례입니다.`);
+            showDebug(`턴 변경: ${currentPlayer.name} (${currentPlayer.color})`);
+
+            // AI 턴
+            if (currentPlayer.isAI) {
+                setTimeout(() => {
+                    aiMove();
+                }, 1000);
+            }
+        }
+
+        // 턴 넘기기
+        function skipTurn() {
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            currentPlayer.canPlay = false;
+            game.passCount++;
+
+            showMessage(`${currentPlayer.name}이(가) 턴을 넘겼습니다.`);
+
+            if (game.passCount >= 4) {
+                endGame();
+                return;
+            }
+
+            nextTurn();
+        }
+
+        // AI 이동 (고수 모드)
+        function aiMove() {
+            const playerIndex = game.currentPlayerIndex;
+            const player = game.players[playerIndex];
+
+            let bestMove = null;
+            let bestScore = -Infinity;
+
+            // 모든 사용 가능한 조각에 대해
+            for (let pieceIndex = 0; pieceIndex < player.pieces.length; pieceIndex++) {
+                const piece = player.pieces[pieceIndex];
+                if (piece.used) continue;
+
+                // 모든 회전과 뒤집기 시도
+                for (let rotation = 0; rotation < 4; rotation++) {
+                    for (let flipped = 0; flipped < 2; flipped++) {
+                        piece.rotation = rotation;
+                        piece.flipped = flipped === 1;
+
+                        const shape = getCurrentShape(piece);
+
+                        // 보드의 모든 위치 시도
+                        for (let row = 0; row < 20; row++) {
+                            for (let col = 0; col < 20; col++) {
+                                if (isValidPlacement(playerIndex, shape, row, col)) {
+                                    const score = evaluateMove(playerIndex, pieceIndex, shape, row, col);
+                                    if (score > bestScore) {
+                                        bestScore = score;
+                                        bestMove = { pieceIndex, row, col, rotation, flipped: flipped === 1 };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 원래 상태로 복원
+                piece.rotation = 0;
+                piece.flipped = false;
+            }
+
+            if (bestMove) {
+                const piece = player.pieces[bestMove.pieceIndex];
+                piece.rotation = bestMove.rotation;
+                piece.flipped = bestMove.flipped;
+
+                placePiece(playerIndex, bestMove.pieceIndex, bestMove.row, bestMove.col);
+                game.passCount = 0;
+                nextTurn();
+            } else {
+                skipTurn();
+            }
+        }
+
+        // 이동 평가 (고수 AI 전략)
+        function evaluateMove(playerIndex, pieceIndex, shape, row, col) {
+            let score = 0;
+            const player = game.players[playerIndex];
+
+            // 1. 큰 조각을 우선 배치 (조각 크기에 비례)
+            const pieceSize = shape.flat().filter(cell => cell === 1).length;
+            score += pieceSize * 10;
+
+            // 2. 보드 중앙에 가까울수록 높은 점수
+            const centerDistance = Math.abs(row + shape.length / 2 - 10) +
+                                  Math.abs(col + shape[0].length / 2 - 10);
+            score -= centerDistance * 2;
+
+            // 3. 새로운 코너 생성 개수 (확장 가능성)
+            let newCorners = 0;
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c] === 1) {
+                        const boardR = row + r;
+                        const boardC = col + c;
+
+                        // 대각선 방향 체크
+                        const corners = [
+                            [boardR - 1, boardC - 1],
+                            [boardR - 1, boardC + 1],
+                            [boardR + 1, boardC - 1],
+                            [boardR + 1, boardC + 1]
+                        ];
+
+                        for (const [cr, cc] of corners) {
+                            if (cr >= 0 && cr < 20 && cc >= 0 && cc < 20 && game.board[cr][cc] === null) {
+                                // 해당 위치가 변으로 같은 색과 접촉하지 않는지 확인
+                                const edges = [
+                                    [cr - 1, cc],
+                                    [cr + 1, cc],
+                                    [cr, cc - 1],
+                                    [cr, cc + 1]
+                                ];
+
+                                let touchesEdge = false;
+                                for (const [er, ec] of edges) {
+                                    if (er >= 0 && er < 20 && ec >= 0 && ec < 20) {
+                                        if (game.board[er][ec] === player.color) {
+                                            touchesEdge = true;
+                                        }
+                                    }
+                                }
+
+                                if (!touchesEdge) {
+                                    newCorners++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            score += newCorners * 20;
+
+            // 4. 상대방의 확장 방해
+            let blocksOpponents = 0;
+            const opponentColors = game.players
+                .filter((_, idx) => idx !== playerIndex)
+                .map(p => p.color);
+
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c] === 1) {
+                        const boardR = row + r;
+                        const boardC = col + c;
+
+                        // 주변에 상대 조각이 있는지 확인
+                        const corners = [
+                            [boardR - 1, boardC - 1],
+                            [boardR - 1, boardC + 1],
+                            [boardR + 1, boardC - 1],
+                            [boardR + 1, boardC + 1]
+                        ];
+
+                        for (const [cr, cc] of corners) {
+                            if (cr >= 0 && cr < 20 && cc >= 0 && cc < 20) {
+                                if (opponentColors.includes(game.board[cr][cc])) {
+                                    blocksOpponents++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            score += blocksOpponents * 5;
+
+            // 5. 첫 번째 조각은 중앙 방향으로
+            const isFirstPiece = player.pieces.every(p => !p.used);
+            if (isFirstPiece) {
+                score += 50; // 첫 조각 보너스
+            }
+
+            return score;
+        }
+
+        // 게임 종료
+        function endGame() {
+            const scores = game.players.map(player => {
+                const remainingSquares = player.pieces.reduce((sum, piece) => {
+                    if (!piece.used) {
+                        return sum + piece.shape.flat().filter(cell => cell === 1).length;
+                    }
+                    return sum;
+                }, 0);
+
+                let score = -remainingSquares;
+
+                // 모든 조각을 놓았는지 확인
+                const allPiecesUsed = player.pieces.every(p => p.used);
+                if (allPiecesUsed) {
+                    score += 15;
+
+                    // 마지막 조각이 1칸 조각인지 확인
+                    const lastPiece = player.pieces[0]; // 1칸 조각은 첫 번째
+                    if (lastPiece.used) {
+                        // 실제로 마지막에 놓았는지는 추적하지 않으므로 보너스 제공
+                        score += 5;
+                    }
+                }
+
+                return { player, score };
+            });
+
+            scores.sort((a, b) => b.score - a.score);
+
+            const finalScoresDiv = document.getElementById('finalScores');
+            finalScoresDiv.innerHTML = scores.map((item, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                return `
+                    <div class="score-item ${item.player.color}">
+                        ${medal} ${item.player.name}: ${item.score}점
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('gameOver').classList.add('show');
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            game.board = Array(20).fill(null).map(() => Array(20).fill(null));
+            game.currentPlayerIndex = 0;
+            game.selectedPieceIndex = null;
+            game.passCount = 0;
+            game.gameStarted = false;
+
+            // 미리보기 초기화
+            lastPreviewCells = [];
+
+            initializePieces();
+
+            game.players.forEach(player => {
+                player.canPlay = true;
+            });
+
+            document.getElementById('gameOver').classList.remove('show');
+
+            // 보드 완전 재생성
+            const boardElement = document.getElementById('gameBoard');
+            boardElement.innerHTML = '';
+
+            renderBoard();
+            renderPlayersInfo();
+            renderPieces();
+            showMessage('🎮 게임 시작! 조각을 선택하고 왼쪽 상단 모서리(★)를 덮도록 배치하세요!');
+            showDebug('게임 리셋 완료');
+        }
+
+        // 게임 초기화
+        function initGame() {
+            console.log('게임 초기화 시작');
+            initializePieces();
+            renderBoard();
+            renderPlayersInfo();
+            renderPieces();
+            showMessage('🎮 게임 시작! 조각을 선택하고 왼쪽 상단 모서리(★)를 덮도록 배치하세요!');
+            showDebug('게임 초기화 완료. 조각을 선택하세요!');
+            console.log('선택된 조각 인덱스:', game.selectedPieceIndex);
+            console.log('현재 플레이어 인덱스:', game.currentPlayerIndex);
+        }
+
+        // 테스트 함수
+        function testClick() {
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            const msg = `
+현재 상태:
+- 플레이어: ${currentPlayer.name} (${currentPlayer.color})
+- 선택된 조각: ${game.selectedPieceIndex === null ? '없음' : game.selectedPieceIndex}
+- AI 턴: ${currentPlayer.isAI}
+- 사용한 조각: ${currentPlayer.pieces.filter(p => p.used).length}/21
+            `.trim();
+            alert(msg);
+            showDebug(msg.replace(/\n/g, ' | '));
+        }
+
+        // 모바일 터치 최적화
+        function preventZoom(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }
+
+        // 더블 탭 줌 방지
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (e) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // 핀치 줌 방지
+        document.addEventListener('touchmove', preventZoom, { passive: false });
+
+        // 페이지 로드 시 게임 시작
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
